@@ -1,0 +1,153 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: sync
+    description: Offline sync operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /sync/records:
+    post:
+      operationId: syncRecords
+      tags: [sync]
+      summary: Sync queued mobile record operations
+      description: Accepts queued offline CREATE, UPDATE, and DELETE operations and resolves conflicts with last-write-wins timestamps.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncRecordsRequest"
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncRecordsResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    FieldRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        notes:
+          type: string
+        location:
+          type: string
+        owner:
+          type: string
+        updatedAt:
+          type: number
+        createdAt:
+          type: number
+        deletedAt:
+          type:
+            - number
+            - "null"
+        syncStatus:
+          type: string
+          enum: [pending, synced, failed, conflict]
+      required:
+        - id
+        - title
+        - category
+        - notes
+        - location
+        - owner
+        - updatedAt
+        - createdAt
+        - deletedAt
+        - syncStatus
+    SyncOperation:
+      type: object
+      properties:
+        queueId:
+          type: string
+        recordId:
+          type: string
+        operation:
+          type: string
+          enum: [CREATE, UPDATE, DELETE]
+        updatedAt:
+          type: number
+        payload:
+          $ref: "#/components/schemas/FieldRecord"
+      required:
+        - queueId
+        - recordId
+        - operation
+        - updatedAt
+        - payload
+    SyncRecordsRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+        operations:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyncOperation"
+      required:
+        - clientId
+        - operations
+    SyncRecordsResponse:
+      type: object
+      properties:
+        acceptedIds:
+          type: array
+          items:
+            type: string
+        conflicts:
+          type: array
+          items:
+            type: object
+            properties:
+              queueId:
+                type: string
+              serverRecord:
+                $ref: "#/components/schemas/FieldRecord"
+            required:
+              - queueId
+              - serverRecord
+        serverRecords:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldRecord"
+      required:
+        - acceptedIds
+        - conflicts
+        - serverRecords
+
